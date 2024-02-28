@@ -1,13 +1,25 @@
 const dotenv = require('dotenv');
 dotenv.config();
+const TOKEN = process.env.DISCORD_TOKEN;
+const port = process.env.PORT;
 
+const express = require('express');
 const fs = require('node:fs');
 const path = require('node:path');
 // Require the necessary discord.js classes
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 
+const app = express();
+
+app.get('/', (request, response) => {
+	return response.sendFile('index.html', { root: '.' });
+});
+
+app.listen(port, () => console.log(`App listening at http://localhost:${port}`));
+
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
 
 client.commands = new Collection();
 
@@ -43,4 +55,4 @@ for (const file of eventFiles) {
 }
 
 // Log in to Discord with your client's token
-client.login(process.env.DISCORD_TOKEN);
+client.login(TOKEN);

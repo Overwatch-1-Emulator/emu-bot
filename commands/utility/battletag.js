@@ -17,14 +17,12 @@ module.exports = {
 		const battleTag = interaction.options.getString('account');
 		const playerId = battleTag.replace('#', '-');
 		const response = await request(`https://overfast-api.tekrop.fr/players/${playerId}/summary`);
-		const playerSummary = await response.body.json();
-
-		// Exit on invalid battletag
 		if (response.statusCode != 200) {
 			await interaction.editReply(`Invalid battletag: ${battleTag}`);
 			return;
 		}
 
+		const playerSummary = await response.body.json();
 		const skillRating = computeSkillRating(playerSummary);
 		if (skillRating == UNRANKED_SR) {
 			await interaction.editReply(
@@ -33,32 +31,36 @@ module.exports = {
 			await interaction.editReply(`Found ${battleTag} with peak ${skillRating} SR.`);
 		}
 
-		registerIGN(interaction.user.id, interaction.channelId, battleTag);
-		registerMMR(interaction.user.id, interaction.channelId, skillRating);
-		interaction.followUp(`Registered ${interaction.user.displayName}'s IGN to ${battleTag} and MMR to ${skillRating}`);
+		await registerIGN(interaction.user.id, interaction.channelId, battleTag);
+		await registerMMR(interaction.user.id, interaction.channelId, skillRating);
+		await interaction.followUp(`Registered ${interaction.user.displayName}'s IGN to ${battleTag} and MMR to ${skillRating}`);
 	},
 };
 
 
-function registerIGN(playerId, channelId, battleTag) {
+async function registerIGN(playerId, channelId, battleTag) {
 	console.log(`Registered ${playerId}'s IGN in ${channelId} to ${battleTag}`);
 }
 
 
-function registerMMR(playerId, channelId, skillRating) {
-	const response = request('https://api.neatqueue.com/api/player/rating', {
-		method: 'POST',
-		headers: {
-			'authorization': NETQUEUE_TOKEN,
-			'content-type': 'application/json',
-		},
-		body: JSON.stringify({
-			player_id: playerId,
-			channel_id: channelId,
-			mmr: skillRating,
-		}),
-	});
-	console.log(`Registered ${playerId}'s MMR in ${channelId} to ${skillRating}`);
+async function registerMMR(playerId, channelId, skillRating) {
+	try {
+		const response = await request('https://api.neatqueue.com/api/player/rating', {
+			method: 'POST',
+			headers: {
+				'authorization': NETQUEUE_TOKEN,
+				'content-type': 'application/json',
+			},
+			body: JSON.stringify({
+				player_id: playerId,
+				channel_id: channelId,
+				mmr: skillRating,
+			}),
+		});
+		console.log(`Registered ${playerId}'s MMR in ${channelId} to ${skillRating}`);
+	} catch (error) {
+		console.error(error);
+	}
 }
 
 
@@ -77,23 +79,22 @@ const UNRANKED_SR = 500;
 function computeSkillRating(playerSummary) {
 	if (playerSummary.competitive == null) return UNRANKED_SR;
 
-	const platformSkillRatings = [];
-	for (const platform in playerSummary.competitive) {
-		const platformProfile = playerSummary.competitive[platform];
-		platformSkillRatings.push(peakSr(platformProfile));
-	}
-
-	return Math.max(...platformSkillRatings);
+	const { pc, console } = playerSummary.competitive;
+	return Math.max(peakSr(pc), peakSr(console));
 }
 
 
 function peakSr(profile) {
 	if (profile == null) return UNRANKED_SR;
-	return Math.max(getRoleSr(profile.tank), getRoleSr(profile.damage), getRoleSr(profile.support));
+
+	const { tank, damage, support } = profile;
+	return Math.max(getRoleSr(tank), getRoleSr(damage), getRoleSr(support));
 }
 
 
-function getRoleSr(rank) {
-	if (rank == null) return UNRANKED_SR;
-	return base_sr[rank.division] + 100 * (5 - rank.tier);
+function getRoleSr(role) {
+	if (role == null) return UNRANKED_SR;
+
+	const { division, tier } = role;
+	return base_sr[division] + 100 * (5 - tier);
 }

@@ -13,6 +13,7 @@ module.exports = {
 				.setDescription('BattleTag#12345')
 				.setRequired(true)),
 	async execute(interaction) {
+		await interaction.deferReply();
 		const battleTag = interaction.options.getString('account');
 		const playerId = battleTag.replace('#', '-');
 		const response = await request(`https://overfast-api.tekrop.fr/players/${playerId}/summary`);

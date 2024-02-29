@@ -3,6 +3,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const dotenv = require('dotenv');
 dotenv.config();
 const NETQUEUE_TOKEN = process.env.NETQUEUE_TOKEN;
+const BATTLETAG_ROLE_NAME = 'Emu battletag';
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -14,6 +15,22 @@ module.exports = {
 				.setRequired(true)),
 	async execute(interaction) {
 		await interaction.deferReply();
+
+		const guild = interaction.guild;
+		let battletagRole = guild.roles.cache.find(r => r.name === BATTLETAG_ROLE_NAME); // get battletag role
+		if (battletagRole == null) { // create battletag role if not exist
+			await interaction.editReply(`Role "${BATTLETAG_ROLE_NAME}" does not exist. Creating one now.`);
+			battletagRole = await guild.roles.create({
+				name: BATTLETAG_ROLE_NAME,
+				reason: 'Role created by Emu for battletag command'
+			});
+		}
+		const member = interaction.member; // member who used the command
+		if (member.roles.cache.has(battletagRole.id)) { // exit if member already part of battletag role
+			await interaction.editReply(`You can only run /${interaction.commandName} command once.`);
+			return;
+		}
+
 		const battleTag = interaction.options.getString('account');
 		const playerId = battleTag.replace('#', '-');
 		const response = await request(`https://overfast-api.tekrop.fr/players/${playerId}/summary`);
@@ -33,7 +50,8 @@ module.exports = {
 
 		await registerIGN(interaction.user.id, interaction.channelId, battleTag);
 		await registerMMR(interaction.user.id, interaction.channelId, skillRating);
-		await interaction.followUp(`Registered ${interaction.user.displayName}'s IGN to ${battleTag} and MMR to ${skillRating}`);
+		await interaction.followUp(`Registered ${interaction.user.displayName}'s IGN to ${battleTag} and MMR to ${skillRating}.`);
+		await member.roles.add(battletagRole); // Add battletag role to member
 	},
 };
 

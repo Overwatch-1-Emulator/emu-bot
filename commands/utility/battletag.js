@@ -5,6 +5,18 @@ dotenv.config();
 const NETQUEUE_TOKEN = process.env.NETQUEUE_TOKEN;
 const BATTLETAG_ROLE_NAME = 'Emu battletag';
 
+const base_sr = {
+	'grandmaster': 4000,
+	'master': 3500,
+	'diamond': 3000,
+	'platinum': 2500,
+	'gold': 2000,
+	'silver': 1500,
+	'bronze': 1000,
+};
+const UNRANKED = 0;
+const defaultSkillRating = base_sr.bronze;
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('battletag')
@@ -17,17 +29,17 @@ module.exports = {
 		await interaction.deferReply();
 
 		const guild = interaction.guild;
-		let battletagRole = guild.roles.cache.find(r => r.name === BATTLETAG_ROLE_NAME); // get battletag role
+		let battletagRole = guild.roles.cache.find(r => r.name === BATTLETAG_ROLE_NAME);
 		if (battletagRole == null) { // create battletag role if not exist
-			await interaction.editReply(`Role "${BATTLETAG_ROLE_NAME}" does not exist. Creating one now.`);
+			await interaction.editReply(`${BATTLETAG_ROLE_NAME} role does not exist. Creating one now.`);
 			battletagRole = await guild.roles.create({
 				name: BATTLETAG_ROLE_NAME,
-				reason: 'Role created by Emu for battletag command'
+				reason: 'Role created by Emu for /battletag command'
 			});
 		}
 		const member = interaction.member; // member who used the command
 		if (member.roles.cache.has(battletagRole.id)) { // exit if member already part of battletag role
-			await interaction.editReply(`You can only run /${interaction.commandName} command once.`);
+			await interaction.editReply(`You have already registered your battletag.`);
 			return;
 		}
 
@@ -40,10 +52,11 @@ module.exports = {
 		}
 
 		const playerSummary = await response.body.json();
-		const skillRating = computeSkillRating(playerSummary);
-		if (skillRating == UNRANKED_SR) {
+		let skillRating = computeSkillRating(playerSummary);
+		if (skillRating == UNRANKED) {
 			await interaction.editReply(
-				`${battleTag} is either unranked or private. Defaulting to ${skillRating} SR.`);
+				`${battleTag} is either unranked or private. Defaulting to ${defaultSkillRating} SR.`);
+				skillRating = defaultSkillRating;
 		} else {
 			await interaction.editReply(`Found ${battleTag} with peak ${skillRating} SR.`);
 		}
@@ -57,13 +70,13 @@ module.exports = {
 
 
 async function registerIGN(playerId, channelId, battleTag) {
-	console.log(`Registered ${playerId}'s IGN in ${channelId} to ${battleTag}`);
+	console.log(`Registered user ${playerId}'s IGN to ${battleTag} in channel ${channelId}`);
 }
 
 
 async function registerMMR(playerId, channelId, skillRating) {
 	try {
-		const response = await request('https://api.neatqueue.com/api/player/rating', {
+		await request('https://api.neatqueue.com/api/player/rating', {
 			method: 'POST',
 			headers: {
 				'authorization': NETQUEUE_TOKEN,
@@ -75,27 +88,14 @@ async function registerMMR(playerId, channelId, skillRating) {
 				mmr: skillRating,
 			}),
 		});
-		console.log(`Registered ${playerId}'s MMR in ${channelId} to ${skillRating}`);
+		console.log(`Registered user ${playerId}'s MMR to ${skillRating} in channel ${channelId}`);
 	} catch (error) {
 		console.error(error);
 	}
 }
 
-
-const base_sr = {
-	'grandmaster': 4000,
-	'master': 3500,
-	'diamond': 3000,
-	'platinum': 2500,
-	'gold': 2000,
-	'silver': 1500,
-	'bronze': 1000,
-};
-const UNRANKED_SR = 500;
-
-
 function computeSkillRating(playerSummary) {
-	if (playerSummary.competitive == null) return UNRANKED_SR;
+	if (playerSummary.competitive == null) return UNRANKED;
 
 	const { pc, console } = playerSummary.competitive;
 	return Math.max(peakSr(pc), peakSr(console));
@@ -103,7 +103,7 @@ function computeSkillRating(playerSummary) {
 
 
 function peakSr(profile) {
-	if (profile == null) return UNRANKED_SR;
+	if (profile == null) return UNRANKED;
 
 	const { tank, damage, support } = profile;
 	return Math.max(getRoleSr(tank), getRoleSr(damage), getRoleSr(support));
@@ -111,7 +111,7 @@ function peakSr(profile) {
 
 
 function getRoleSr(role) {
-	if (role == null) return UNRANKED_SR;
+	if (role == null) return UNRANKED;
 
 	const { division, tier } = role;
 	return base_sr[division] + 100 * (5 - tier);

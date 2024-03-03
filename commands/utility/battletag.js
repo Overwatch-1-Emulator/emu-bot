@@ -3,7 +3,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const dotenv = require('dotenv');
 dotenv.config();
 const NETQUEUE_TOKEN = process.env.NETQUEUE_TOKEN;
-const BATTLETAG_ROLE_NAME = 'Emu battletag';
+const BATTLETAG_ROLE_NAME = 'Emu Battletag';
 
 const base_sr = {
 	'grandmaster': 4000,
@@ -70,27 +70,46 @@ module.exports = {
 
 
 async function registerIGN(playerId, channelId, battleTag) {
-	console.log(`Registered user ${playerId}'s IGN to ${battleTag} in channel ${channelId}`);
+	const response = await request('https://api.neatqueue.com/api/v2/set/ign', {
+		method: 'POST',
+		headers: {
+			'authorization': NETQUEUE_TOKEN,
+			'content-type': 'application/json',
+		},
+		body: JSON.stringify({
+			channel_id: channelId,
+			account: battleTag,
+			user_id: playerId
+		}),
+	});
+	const responseBody = await response.body.json();
+	if (response.statusCode == 200) {
+		console.log(`Registered user ${playerId}'s IGN to ${battleTag} in channel ${channelId}`);
+	} else {
+		console.error(responseBody);
+	}
 }
 
 
 async function registerMMR(playerId, channelId, skillRating) {
-	try {
-		await request('https://api.neatqueue.com/api/player/rating', {
-			method: 'POST',
-			headers: {
-				'authorization': NETQUEUE_TOKEN,
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify({
-				player_id: playerId,
-				channel_id: channelId,
-				mmr: skillRating,
-			}),
-		});
+
+	const response = await request('https://api.neatqueue.com/api/player/rating', {
+		method: 'POST',
+		headers: {
+			'authorization': NETQUEUE_TOKEN,
+			'content-type': 'application/json',
+		},
+		body: JSON.stringify({
+			player_id: playerId,
+			channel_id: channelId,
+			mmr: skillRating,
+		}),
+	});
+	const responseBody = await response.body.json();
+	if (response.statusCode == 200) {
 		console.log(`Registered user ${playerId}'s MMR to ${skillRating} in channel ${channelId}`);
-	} catch (error) {
-		console.error(error);
+	} else {
+		console.error(responseBody);
 	}
 }
 

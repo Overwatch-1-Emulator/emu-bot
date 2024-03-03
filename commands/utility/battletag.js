@@ -1,8 +1,7 @@
 const { request } = require('undici');
 const { SlashCommandBuilder } = require('discord.js');
-const dotenv = require('dotenv');
-dotenv.config();
-const NETQUEUE_TOKEN = process.env.NETQUEUE_TOKEN;
+require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` });
+const NETQUEUE_API_SECRET = process.env.NETQUEUE_API_SECRET;
 const BATTLETAG_ROLE_NAME = 'Emu Battletag';
 
 const base_sr = {
@@ -73,7 +72,7 @@ async function registerIGN(playerId, channelId, battleTag) {
 	const response = await request('https://api.neatqueue.com/api/v2/set/ign', {
 		method: 'POST',
 		headers: {
-			'authorization': NETQUEUE_TOKEN,
+			'authorization': NETQUEUE_API_SECRET,
 			'content-type': 'application/json',
 		},
 		body: JSON.stringify({
@@ -96,7 +95,7 @@ async function registerMMR(playerId, channelId, skillRating) {
 	const response = await request('https://api.neatqueue.com/api/player/rating', {
 		method: 'POST',
 		headers: {
-			'authorization': NETQUEUE_TOKEN,
+			'authorization': NETQUEUE_API_SECRET,
 			'content-type': 'application/json',
 		},
 		body: JSON.stringify({

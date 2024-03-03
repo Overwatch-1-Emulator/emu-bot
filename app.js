@@ -4,7 +4,7 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const BnetStrategy = require('passport-bnet').Strategy;
 
-require('dotenv').config();
+require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` });
 const BNET_ID = process.env.BNET_OAUTH_CLIENT_ID;
 const BNET_SECRET = process.env.BNET_OAUTH_CLIENT_SECRET;
 const OAUTH_CALLBACK_URL = process.env.OAUTH_CALLBACK_URL || 'http://localhost:3000/oauth/battlenet/callback';

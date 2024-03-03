@@ -3,8 +3,8 @@ const path = require('node:path');
 // Require the necessary discord.js classes
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 
-require('dotenv').config();
-const TOKEN = process.env.DISCORD_TOKEN;
+require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` });
+const TOKEN = process.env.DISCORD_BOT_SECRET;
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });

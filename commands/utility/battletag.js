@@ -14,7 +14,7 @@ const base_sr = {
 	'bronze': 1000,
 };
 const UNRANKED = 0;
-const defaultSkillRating = base_sr.bronze;
+const defaultSkillRating = base_sr.gold;
 
 module.exports = {
 	data: new SlashCommandBuilder()

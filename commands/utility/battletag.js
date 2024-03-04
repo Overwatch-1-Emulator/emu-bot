@@ -22,15 +22,18 @@ module.exports = {
 		.setDescription('Register your battletag to set your starting SR')
 		.addStringOption(option =>
 			option.setName('account')
-				.setDescription('BattleTag#12345')
+				.setDescription('BattleTag#12345 (case-sensitive)')
 				.setRequired(true)),
 	async execute(interaction) {
-		await interaction.deferReply();
+		await interaction.deferReply({ ephemeral: false });
 
 		const guild = interaction.guild;
 		let battletagRole = guild.roles.cache.find(r => r.name === BATTLETAG_ROLE_NAME);
 		if (battletagRole == null) { // create battletag role if not exist
-			await interaction.editReply(`${BATTLETAG_ROLE_NAME} role does not exist. Creating one now.`);
+			await interaction.editReply({
+				content: `${BATTLETAG_ROLE_NAME} role does not exist. Creating one now.`,
+				ephemeral: false
+			});
 			battletagRole = await guild.roles.create({
 				name: BATTLETAG_ROLE_NAME,
 				reason: 'Role created by Emu for /battletag command'
@@ -38,7 +41,10 @@ module.exports = {
 		}
 		const member = interaction.member; // member who used the command
 		if (member.roles.cache.has(battletagRole.id)) { // exit if member already part of battletag role
-			await interaction.editReply(`You have already registered your battletag.`);
+			await interaction.editReply({
+				content: `You have already registered your battletag.`,
+				ephemeral: false,
+			});
 			return;
 		}
 
@@ -46,24 +52,39 @@ module.exports = {
 		const playerId = battleTag.replace('#', '-');
 		const response = await request(`https://overfast-api.tekrop.fr/players/${playerId}/summary`);
 		if (response.statusCode != 200) {
-			await interaction.editReply(`Invalid battletag: ${battleTag}`);
+			await interaction.editReply({
+				content: `Invalid battletag: ${battleTag}`,
+				ephemeral: false,
+			});
 			return;
 		}
 
 		const playerSummary = await response.body.json();
 		let skillRating = computeSkillRating(playerSummary);
+		let neatqueueMmr;
 		if (skillRating == UNRANKED) {
-			await interaction.editReply(
-				`${battleTag} is either unranked or private. Defaulting to ${defaultSkillRating} SR.`);
-				skillRating = defaultSkillRating;
+			await interaction.editReply({
+				content: `${battleTag} is either unranked or private. Defaulting to ${defaultSkillRating} SR.`,
+				ephemeral: false,
+			});
+			neatqueueMmr = defaultSkillRating;
 		} else {
-			await interaction.editReply(`Found ${battleTag} with peak ${skillRating} SR.`);
+			await interaction.editReply({
+				content: `Found ${battleTag} with peak ${skillRating} SR.`,
+				ephemeral: false,
+			});
+			neatqueueMmr = skillRating;
 		}
 
 		await registerIGN(interaction.user.id, interaction.channelId, battleTag);
-		await registerMMR(interaction.user.id, interaction.channelId, skillRating);
-		await interaction.followUp(`Registered ${interaction.user.displayName}'s IGN to ${battleTag} and MMR to ${skillRating}.`);
-		await member.roles.add(battletagRole); // Add battletag role to member
+		await registerMMR(interaction.user.id, interaction.channelId, neatqueueMmr);
+		await interaction.editReply({
+			content: `Registered <@${interaction.user.id}>'s IGN to ${battleTag} and MMR to ${neatqueueMmr}.`,
+			ephemeral: false,
+		});
+		if (skillRating != UNRANKED) {
+			await member.roles.add(battletagRole); // Add battletag role to member
+		}
 	},
 };
 

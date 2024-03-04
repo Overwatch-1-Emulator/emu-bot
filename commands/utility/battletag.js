@@ -60,7 +60,7 @@ module.exports = {
 		}
 
 		const playerSummary = await response.body.json();
-		let skillRating = computeSkillRating(playerSummary);
+		const skillRating = computeSkillRating(playerSummary);
 		let neatqueueMmr;
 		if (skillRating == UNRANKED) {
 			await interaction.editReply({
@@ -113,16 +113,16 @@ async function registerIGN(playerId, channelId, battleTag) {
 
 async function registerMMR(playerId, channelId, skillRating) {
 
-	const response = await request('https://api.neatqueue.com/api/player/rating', {
+	const response = await request('https://api.neatqueue.com/api/v2/set/mmr', {
 		method: 'POST',
 		headers: {
 			'authorization': NETQUEUE_API_SECRET,
 			'content-type': 'application/json',
 		},
 		body: JSON.stringify({
-			player_id: playerId,
 			channel_id: channelId,
 			mmr: skillRating,
+			user_id: playerId
 		}),
 	});
 	const responseBody = await response.body.json();

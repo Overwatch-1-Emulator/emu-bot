@@ -25,68 +25,93 @@ module.exports = {
 				.setDescription('BattleTag#12345 (case-sensitive)')
 				.setRequired(true)),
 	async execute(interaction) {
-		await interaction.deferReply({ ephemeral: false });
+		try {
+			await interaction.deferReply({ ephemeral: true });
 
-		const guild = interaction.guild;
-		let battletagRole = guild.roles.cache.find(r => r.name === BATTLETAG_ROLE_NAME);
-		if (battletagRole == null) { // create battletag role if not exist
-			await interaction.editReply({
-				content: `${BATTLETAG_ROLE_NAME} role does not exist. Creating one now.`,
-				ephemeral: false
-			});
-			battletagRole = await guild.roles.create({
-				name: BATTLETAG_ROLE_NAME,
-				reason: 'Role created by Emu for /battletag command'
-			});
-		}
-		const member = interaction.member; // member who used the command
-		if (member.roles.cache.has(battletagRole.id)) { // exit if member already part of battletag role
-			await interaction.editReply({
-				content: `You have already registered your battletag.`,
-				ephemeral: false,
-			});
-			return;
-		}
+			const battletagRole = await getBattletagRole(interaction);
+			if (interaction.member.roles.cache.has(battletagRole.id)) { // exit if member already part of battletag role
+				await interaction.editReply({
+					content: `You have already registered your battletag.`,
+					ephemeral: true,
+				});
+				return;
+			}
 
-		const battleTag = interaction.options.getString('account');
-		const playerId = battleTag.replace('#', '-');
-		const response = await request(`https://overfast-api.tekrop.fr/players/${playerId}/summary`);
-		if (response.statusCode != 200) {
-			await interaction.editReply({
-				content: `Invalid battletag: ${battleTag}`,
-				ephemeral: false,
-			});
-			return;
-		}
+			const battleTag = interaction.options.getString('account');
+			const playerSummary = await getPlayerSummary(battleTag);
 
-		const playerSummary = await response.body.json();
-		const skillRating = computeSkillRating(playerSummary);
-		let neatqueueMmr;
-		if (skillRating == UNRANKED) {
+			const skillRating = computeSkillRating(playerSummary);
+			let assignedMmr;
+			if (skillRating == UNRANKED) {
+				await interaction.editReply({
+					content: `${battleTag} is either unranked or private. Defaulting to ${defaultSkillRating} SR.`,
+					ephemeral: true,
+				});
+				assignedMmr = defaultSkillRating;
+			} else {
+				await interaction.editReply({
+					content: `Found ${battleTag} with peak ${skillRating} SR.`,
+					ephemeral: true,
+				});
+				assignedMmr = skillRating;
+			}
+			
+			const playerId = interaction.user.id;
+			const channelId = interaction.channelId
+			await registerIGN(playerId, channelId, battleTag);
+			await registerMMR(playerId, channelId, assignedMmr);
 			await interaction.editReply({
-				content: `${battleTag} is either unranked or private. Defaulting to ${defaultSkillRating} SR.`,
-				ephemeral: false,
+				content: `Registered <@${playerId}>'s IGN to ${battleTag} and MMR to ${assignedMmr}.`,
+				ephemeral: true,
 			});
-			neatqueueMmr = defaultSkillRating;
-		} else {
-			await interaction.editReply({
-				content: `Found ${battleTag} with peak ${skillRating} SR.`,
-				ephemeral: false,
-			});
-			neatqueueMmr = skillRating;
-		}
 
-		await registerIGN(interaction.user.id, interaction.channelId, battleTag);
-		await registerMMR(interaction.user.id, interaction.channelId, neatqueueMmr);
-		await interaction.editReply({
-			content: `Registered <@${interaction.user.id}>'s IGN to ${battleTag} and MMR to ${neatqueueMmr}.`,
-			ephemeral: false,
-		});
-		if (skillRating != UNRANKED) {
-			await member.roles.add(battletagRole); // Add battletag role to member
+			if (skillRating != UNRANKED) {
+				await interaction.member.roles.add(battletagRole); // Add battletag role to member
+			}
+		} catch (err) {
+			await interaction.editReply({
+				content: err,
+				ephemeral: true,
+			});
 		}
 	},
 };
+
+async function getBattletagRole(interaction) {
+	let battletagRole = interaction.guild.roles.cache.find(r => r.name === BATTLETAG_ROLE_NAME);
+	if (battletagRole != null) return battletagRole;
+	
+	try { // create battletag role if it does not exist
+		await interaction.editReply({
+			content: `${BATTLETAG_ROLE_NAME} role does not exist. Creating one now.`,
+			ephemeral: true
+		});
+		battletagRole = await interaction.guild.roles.create({
+			name: BATTLETAG_ROLE_NAME,
+			reason: 'Role created by Emu for /battletag command'
+		});
+	} catch (err) {
+		console.error(err)
+	}
+
+	return battletagRole;
+}
+
+
+async function getPlayerSummary(battleTag) {
+	const playerId = battleTag.replace('#', '-');
+	const response = await request(`https://overfast-api.tekrop.fr/players/${playerId}/summary`);
+	const playerSummary = await response.body.json();
+
+	return new Promise((resolve, reject) => {
+		if (response.statusCode == 200) {
+			resolve(playerSummary)
+		} else {
+			console.error(playerSummary)
+			reject(`Invalid battletag: could not find "${battleTag}" in https://overwatch.blizzard.com/en-us/search/`)
+		}
+	})
+}
 
 
 async function registerIGN(playerId, channelId, battleTag) {
@@ -103,16 +128,19 @@ async function registerIGN(playerId, channelId, battleTag) {
 		}),
 	});
 	const responseBody = await response.body.json();
-	if (response.statusCode == 200) {
-		console.log(`Registered user ${playerId}'s IGN to ${battleTag} in channel ${channelId}`);
-	} else {
-		console.error(responseBody);
-	}
+
+	return new Promise((resolve, reject) => {
+		if (response.statusCode == 200) {
+			resolve(responseBody)
+		} else {
+			console.error(responseBody)
+			reject(`Failed to post IGN=${battleTag} to Neatqueue API`)
+		}
+	})
 }
 
 
 async function registerMMR(playerId, channelId, skillRating) {
-
 	const response = await request('https://api.neatqueue.com/api/v2/set/mmr', {
 		method: 'POST',
 		headers: {
@@ -126,12 +154,17 @@ async function registerMMR(playerId, channelId, skillRating) {
 		}),
 	});
 	const responseBody = await response.body.json();
-	if (response.statusCode == 200) {
-		console.log(`Registered user ${playerId}'s MMR to ${skillRating} in channel ${channelId}`);
-	} else {
-		console.error(responseBody);
-	}
+
+	return new Promise((resolve, reject) => {
+		if (response.statusCode == 200) {
+			resolve(responseBody)
+		} else {
+			console.error(responseBody)
+			reject(`Failed to post MMR=${skillRating} to Neatqueue API`)
+		}
+	})
 }
+
 
 function computeSkillRating(playerSummary) {
 	if (playerSummary.competitive == null) return UNRANKED;

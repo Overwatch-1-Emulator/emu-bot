@@ -69,6 +69,7 @@ module.exports = {
 				await interaction.member.roles.add(battletagRole); // Add battletag role to member
 			}
 		} catch (err) {
+			console.error(err)
 			await interaction.editReply({
 				content: err,
 				ephemeral: true,
@@ -79,9 +80,7 @@ module.exports = {
 
 async function getBattletagRole(interaction) {
 	let battletagRole = interaction.guild.roles.cache.find(r => r.name === BATTLETAG_ROLE_NAME);
-	if (battletagRole != null) return battletagRole;
-	
-	try { // create battletag role if it does not exist
+	if (battletagRole == null) { // create battletag role if it does not exist
 		await interaction.editReply({
 			content: `${BATTLETAG_ROLE_NAME} role does not exist. Creating one now.`,
 			ephemeral: true
@@ -90,11 +89,15 @@ async function getBattletagRole(interaction) {
 			name: BATTLETAG_ROLE_NAME,
 			reason: 'Role created by Emu for /battletag command'
 		});
-	} catch (err) {
-		console.error(err)
 	}
 
-	return battletagRole;
+	return new Promise((resolve, reject) => {
+		if (battletagRole != null) {
+			resolve(battletagRole)
+		} else {
+			reject(`Could not find "${BATTLETAG_ROLE_NAME}" role.`)
+		}
+	})
 }
 
 

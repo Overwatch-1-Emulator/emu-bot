@@ -70,10 +70,12 @@ module.exports = {
 			}
 		} catch (err) {
 			console.error(err);
-			await interaction.editReply({
-				content: err,
-				ephemeral: true,
-			});
+			if (typeof err === 'string' || err instanceof String) {
+				await interaction.editReply({
+					content: err,
+					ephemeral: true,
+				});
+			}
 		}
 	},
 };

@@ -55,9 +55,9 @@ module.exports = {
 				});
 				assignedMmr = skillRating;
 			}
-			
+
 			const playerId = interaction.user.id;
-			const channelId = interaction.channelId
+			const channelId = interaction.channelId;
 			await registerIGN(playerId, channelId, battleTag);
 			await registerMMR(playerId, channelId, assignedMmr);
 			await interaction.editReply({
@@ -69,7 +69,7 @@ module.exports = {
 				await interaction.member.roles.add(battletagRole); // Add battletag role to member
 			}
 		} catch (err) {
-			console.error(err)
+			console.error(err);
 			await interaction.editReply({
 				content: err,
 				ephemeral: true,
@@ -93,11 +93,11 @@ async function getBattletagRole(interaction) {
 
 	return new Promise((resolve, reject) => {
 		if (battletagRole != null) {
-			resolve(battletagRole)
+			resolve(battletagRole);
 		} else {
-			reject(`Could not find "${BATTLETAG_ROLE_NAME}" role.`)
+			reject(`Could not find "${BATTLETAG_ROLE_NAME}" role.`);
 		}
-	})
+	});
 }
 
 
@@ -108,12 +108,12 @@ async function getPlayerSummary(battleTag) {
 
 	return new Promise((resolve, reject) => {
 		if (response.statusCode == 200) {
-			resolve(playerSummary)
+			resolve(playerSummary);
 		} else {
-			console.error(playerSummary)
-			reject(`Invalid battletag: could not find "${battleTag}" in https://overwatch.blizzard.com/en-us/search/`)
+			console.error(playerSummary);
+			reject(`Invalid battletag: could not find "${battleTag}" in https://overwatch.blizzard.com/en-us/search/`);
 		}
-	})
+	});
 }
 
 
@@ -134,12 +134,12 @@ async function registerIGN(playerId, channelId, battleTag) {
 
 	return new Promise((resolve, reject) => {
 		if (response.statusCode == 200) {
-			resolve(responseBody)
+			resolve(responseBody);
 		} else {
-			console.error(responseBody)
-			reject(`Failed to post IGN=${battleTag} to Neatqueue API`)
+			console.error(responseBody);
+			reject(`Failed to post IGN=${battleTag} to Neatqueue API`);
 		}
-	})
+	});
 }
 
 
@@ -160,12 +160,12 @@ async function registerMMR(playerId, channelId, skillRating) {
 
 	return new Promise((resolve, reject) => {
 		if (response.statusCode == 200) {
-			resolve(responseBody)
+			resolve(responseBody);
 		} else {
-			console.error(responseBody)
-			reject(`Failed to post MMR=${skillRating} to Neatqueue API`)
+			console.error(responseBody);
+			reject(`Failed to post MMR=${skillRating} to Neatqueue API`);
 		}
-	})
+	});
 }
 
 

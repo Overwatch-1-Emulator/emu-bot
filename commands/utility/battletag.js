@@ -13,28 +13,54 @@ module.exports = {
 				.setRequired(true)),
 	async execute(interaction) {
 		try {
-			await interaction.deferReply({ ephemeral: true });
+			await interaction.deferReply({ ephemeral: false });
 
 			const battleTag = interaction.options.getString('account');
 
 			const playerId = interaction.user.id;
-			const channelId = interaction.channelId;
-			await registerIGN(playerId, channelId, battleTag);
+			const queueChannels = await getAllQueueChannels(interaction.guildId);
+			for (const queueChannel of queueChannels) {
+				const channelId = queueChannel[0];
+				const channelName = queueChannel[1];
+				await registerIGN(playerId, channelId, battleTag);
+				console.log(`Registered <@${playerId}>'s IGN as ${battleTag} in ${channelName}.`);
+			}
 			await interaction.editReply({
-				content: `Registered <@${playerId}>'s IGN to ${battleTag}.`,
-				ephemeral: true,
+				content: `Registered <@${playerId}>'s IGN as ${battleTag}.`,
+				ephemeral: false,
 			});
 		} catch (err) {
 			console.error(err);
 			if (typeof err === 'string' || err instanceof String) {
 				await interaction.editReply({
 					content: err,
-					ephemeral: true,
+					ephemeral: false,
 				});
 			}
 		}
 	},
 };
+
+async function getAllQueueChannels(serverId) {
+	const response = await request(`https://api.neatqueue.com/api/queuechannels/${serverId}`, {
+		method: 'GET',
+		headers: {
+			'authorization': NETQUEUE_API_SECRET,
+			'content-type': 'application/json',
+		},
+	});
+	const responseBody = await response.body.json();
+
+	return new Promise((resolve, reject) => {
+		if (response.statusCode == 200) {
+			resolve(responseBody);
+		} else {
+			console.error(response);
+			console.error(responseBody);
+			reject(`Failed to get all queue channels from Neatqueue API`);
+		}
+	});
+}
 
 async function registerIGN(playerId, channelId, battleTag) {
 	const response = await request('https://api.neatqueue.com/api/v2/set/ign', {
@@ -55,6 +81,7 @@ async function registerIGN(playerId, channelId, battleTag) {
 		if (response.statusCode == 200) {
 			resolve(responseBody);
 		} else {
+			console.error(response);
 			console.error(responseBody);
 			reject(`Failed to post IGN=${battleTag} to Neatqueue API`);
 		}

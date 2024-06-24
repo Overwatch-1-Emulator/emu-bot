@@ -49,14 +49,12 @@ async function getAllQueueChannels(serverId) {
 			'content-type': 'application/json',
 		},
 	});
-	const responseBody = await response.body.json();
 
 	return new Promise((resolve, reject) => {
 		if (response.statusCode == 200) {
-			resolve(responseBody);
+			resolve(response.body.json());
 		} else {
 			console.error(response);
-			console.error(responseBody);
 			reject(`Failed to get all queue channels from Neatqueue API`);
 		}
 	});
@@ -75,14 +73,12 @@ async function registerIGN(playerId, channelId, battleTag) {
 			user_id: playerId
 		}),
 	});
-	const responseBody = await response.body.json();
 
 	return new Promise((resolve, reject) => {
 		if (response.statusCode == 200) {
-			resolve(responseBody);
+			resolve(response.body.json());
 		} else {
 			console.error(response);
-			console.error(responseBody);
 			reject(`Failed to post IGN=${battleTag} to Neatqueue API`);
 		}
 	});
